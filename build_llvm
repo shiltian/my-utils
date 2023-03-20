@@ -21,7 +21,7 @@ def run_cmd(base_cmd: list, proj: str, build_type: str, install: bool, build_roo
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="build_all", description="Build LLVM and OpenMP"
+        prog="build_llvm", description="Build LLVM and OpenMP"
     )
 
     parser.add_argument("-b", "--build-root", type=pathlib.Path, default=None)
