@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+
+import argparse
+import parse
+import sys
+
+from typing import Optional
+
+
+def decode(inst: str, fields: [(str, int, int)]) -> [(str, int)]:
+    if inst.startswith("["):
+        inst = inst[1:]
+    if inst.endswith("]"):
+        inst = inst[:-1]
+
+    encoding = 0
+    for byte in inst.split(",")[::-1]:
+        encoding = (encoding << 8) | int(byte, 16)
+
+    res = []
+    for field in fields:
+        mask = 0
+        for i in range(field[2], field[1] + 1):
+            mask = mask | (1 << i)
+        val = (encoding & mask) >> field[2]
+        res.append((field[0], val))
+
+    return res
+
+
+def read_input(filename: Optional[str]) -> [str]:
+    if filename is not None:
+        with open(filename, "r") as f:
+            return f.readlines()
+    return sys.stdin.readlines()
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="instruction_decoder.py",
+        description="Decode an instruction encoding with provided format",
+    )
+
+    parser.add_argument(
+        "--field",
+        type=str,
+        help="The field name and the bits to be decoded. Format: FIELD_NAME[END:START].",
+        required=True,
+        action="append",
+    )
+    parser.add_argument(
+        "filename",
+        help="Input file name. If not specified, the decoder will read from standard input.",
+        nargs="?",
+    )
+
+    args = parser.parse_args()
+
+    fields = []
+
+    for field in args.field:
+        # Parse the field
+        r = parse.parse("{:w}[{:d}:{:d}]", field)
+        fields.append((r[0], r[1], r[2]))
+
+    for inst in read_input(args.filename):
+        inst = inst.strip()
+        res = decode(inst, fields)
+        print("Encoding: {}".format(inst))
+        for r in res:
+            print("  {}: {}".format(r[0], r[1]))
+
+
+if __name__ == "__main__":
+    main()
