@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+
+import argparse
+import copy
+import os
+import subprocess
+import pathlib
+
+
+def run_cmd(base_cmd: list, proj: str, build_type: str, build_root: str):
+    cmd = copy.deepcopy(base_cmd)
+    cwd = os.path.join(build_root, proj, build_type)
+    print("[build_llvm] info: cd {}; {}".format(cwd, cmd))
+    subprocess.run(cmd, cwd=cwd, check=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="build_proj", description="Build a Ninja project"
+    )
+
+    parser.add_argument("-b", "--build-root", type=pathlib.Path, default=None)
+    parser.add_argument("-j", "--jobs", type=int, default=None)
+    parser.add_argument("projs", nargs="*", type=str, default=["llvm@release,debug"])
+
+    args = parser.parse_args()
+
+    build_root = args.build_root if args.build_root else os.environ["BUILD_ROOT"]
+
+    assert os.path.exists(build_root)
+
+    print("[build_proj] info: njobs: {}, projects: {}\n".format(args.jobs, args.projs))
+
+    # Construct the list of projects to be built and their build types.
+    projs = {}
+    for p in args.projs:
+        p = p.split("@")
+        name = p[0].lower()
+        if len(p) > 1:
+            build_types = p[1].split(",")
+        else:
+            build_types = ["release"]
+        if name not in projs:
+            projs[name] = []
+        for t in build_types:
+            projs[name].append(t.lower())
+
+    cmd = ["ninja", "-k", "0"]
+    if args.jobs:
+        cmd += ["-j", "{}".format(args.jobs)]
+
+    for p in projs:
+        for t in projs[p]:
+            run_cmd(cmd, p, t, build_root)
+
+
+if __name__ == "__main__":
+    main()
