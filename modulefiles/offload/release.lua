@@ -5,7 +5,7 @@ whatis("Version : release")
 
 conflict("llvm", "lightning-llvm", "offload")
 
-local build_root = os.getenv("DEPLOY_ROOT")
+local build_root = os.getenv("BUILD_ROOT")
 local pkg_home = pathJoin(build_root, myModuleName(), myModuleVersion())
 
 pushenv("LLVM_ROOT", pkg_home)
