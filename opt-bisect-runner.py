@@ -9,6 +9,22 @@ prog = "opt-bisect-runner"
 
 logger = logging.getLogger(prog)
 
+def build(script, val):
+    cmd = [script, f"{val}"]
+
+    logger.debug(f"build cmd: {" ".join(cmd)}")
+    logger.info(f"building with cur={val}...")
+
+    subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def test(script, repeat):
+    for t in range(0, repeat):
+        logger.info(f"testing...[{t + 1}/{repeat}]")
+        r = subprocess.call([script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if r != 0:
+            return False
+    return True
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -28,8 +44,8 @@ def main():
         required=True,
         help="a script to test",
     )
-    parser.add_argument("-l", "--lower", type=int, default=0, help="lower bound")
-    parser.add_argument("-u", "--upper", type=int, default=1024, help="upper bound")
+    parser.add_argument("-l", "--lower", type=int, default=1, help="lower bound")
+    parser.add_argument("-u", "--upper", type=int, help="upper bound")
     parser.add_argument("-r", "--repeat", type=int, default=1, help="times to run the test script")
     parser.add_argument(
         "-v",
@@ -54,6 +70,17 @@ def main():
     repeat = args.repeat
     last_fail = False
 
+    # We need to find the upper bound first
+    if hi is None:
+        hi = lo
+        logger.info("finding the upper bound...")
+        logger.info(f"current hi={hi}")
+        build(build_script, hi)
+        while test(test_script, repeat):
+            logger.info(f"current hi={hi} succeeds")
+            lo = hi
+            hi = hi * 2
+
 
     while lo < hi:
         cur = (lo + hi) // 2
@@ -61,18 +88,11 @@ def main():
 
         logger.info(f"lo={lo}, hi={hi}, cur={cur}")
 
-        logger.debug(f"build cmd: {" ".join(build_cmd)}")
-
         logger.info("building...")
 
-        subprocess.check_call(build_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        build(build_script, cur)
 
-        for t in range(0, repeat):
-            logger.info(f"testing...[{t + 1}/{repeat}]")
-            r = subprocess.call([test_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            last_fail = r != 0
-            if last_fail:
-                break
+        last_fail = test(test_script, repeat)
 
         if last_fail:
             logger.info(f"cur={cur} fails")

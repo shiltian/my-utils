@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import argparse
 import subprocess
 import pathlib
@@ -43,7 +44,6 @@ def main():
         help="verbose mode",
     )
 
-
     args = parser.parse_args()
 
     if args.verbose:
@@ -52,7 +52,22 @@ def main():
         logging.basicConfig(level=logging.INFO)
 
     with open(args.file_list, "r") as f:
-        file_list = f.readlines();
+        file_list = f.readlines()
+
+    for f in file_list:
+        logger.info(f"trying file {f}...")
+        cmd = [args.build_script, f]
+        logger.debug(f"building file {f}")
+        subprocess.check_call(cmd)
+        cmd = [args.test_script, f]
+        r = subprocess.call(cmd)
+        if r == 0:
+            logger.info(f"file {f} test okay. move on.")
+        else:
+            logger.info(f"found faulty file {f}")
+            return
+
+    logger.info(f"run all files in {args.file_list} but couldn't find faulty file")
 
 
 if __name__ == "__main__":
