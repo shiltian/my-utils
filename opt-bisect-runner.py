@@ -84,7 +84,6 @@ def main():
 
     while lo < hi:
         cur = (lo + hi) // 2
-        build_cmd = [build_script, f"{cur}"]
 
         logger.info(f"lo={lo}, hi={hi}, cur={cur}")
 
