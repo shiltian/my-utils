@@ -79,6 +79,8 @@ def main():
             run_update_wrapper("update_mir_test_checks.py", "mir", t)
         elif "update_test_checks.py" in first_line:
             run_update_wrapper("update_test_checks.py", "opt", t)
+        elif "update_mc_test_checks.py" in first_line:
+            run_update_wrapper("update_mc_test_checks.py", "llvm-mc", t)
         else:
             assert 0, f"unknown test updater {first_line} for test {t}"
 
