@@ -139,7 +139,7 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release                                      \
       -DLLVM_ENABLE_OCAMLDOC=OFF                                               \
       -DLLVM_INCLUDE_DOCS=OFF                                                  \
       -DLLVM_ENABLE_LLD=ON                                                     \
-      -DRUNTIMES_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Debug;-DLIBOMPTARGET_PLUGINS_TO_BUILD='amdgpu;nvptx';-DLIBOMPTARGET_DLOPEN_PLUGINS='';-DLIBOMPTARGET_ENABLE_DEBUG=ON" \
+      -DRUNTIMES_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Debug;-DLIBOMPTARGET_PLUGINS_TO_BUILD=amdgpu;nvptx;-DLIBOMPTARGET_DLOPEN_PLUGINS='';-DLIBOMPTARGET_ENABLE_DEBUG=ON" \
       -B $BUILD_ROOT/offload/release                                           \
       -S $HOME/Documents/vscode/llvm-project/llvm                              \
       --install-prefix=$BUILD_ROOT/offload/release
