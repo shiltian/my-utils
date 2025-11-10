@@ -32,6 +32,51 @@ def run_script(script_path, test_value, extra_args=None):
         return False
 
 
+def find_upper_bound(lower_bound, script_path, extra_args=None, verbose=False):
+    """
+    Find an upper bound by starting from lower_bound and doubling until the script fails.
+
+    Args:
+        lower_bound: Starting point for the search
+        script_path: Path to the script to execute
+        extra_args: Additional arguments to pass to the script
+        verbose: Whether to print detailed output
+
+    Returns:
+        tuple: (updated_lower_bound, upper_bound) where script succeeds at updated_lower_bound
+               and fails at upper_bound
+    """
+    if extra_args is None:
+        extra_args = []
+
+    print(f"Finding upper bound starting from {lower_bound}")
+
+    current = lower_bound
+    last_success = None
+
+    while True:
+        if verbose:
+            print(f"Testing value: {current}")
+
+        success = run_script(script_path, current, extra_args)
+
+        if success:
+            if verbose:
+                print(f"✓ Script succeeded with value {current}")
+            last_success = current
+            current *= 2
+        else:
+            if verbose:
+                print(f"✗ Script failed with value {current}")
+            # Found our upper bound
+            if last_success is None:
+                # The script failed even at the starting point
+                print(f"Error: Script fails at starting value {lower_bound}")
+                sys.exit(1)
+            print(f"Upper bound found at: {current}")
+            return last_success, current
+
+
 def binary_search(
     lower_bound, upper_bound, script_path, extra_args=None, verbose=False
 ):
@@ -91,6 +136,7 @@ def main():
 Examples:
   %(prog)s -l 1 -u 100 -t ./test_script.sh
   %(prog)s --lower 0 --upper 1000 --test ./my_test.py --verbose
+  %(prog)s -l 1 -t ./check.sh  # Auto-discover upper bound
   %(prog)s -l 1 -u 50 -t ./check.sh -- --flag value --config test.conf
         """,
     )
@@ -99,7 +145,10 @@ Examples:
         "-l", "--lower", type=int, required=True, help="Lower bound of the search range"
     )
     parser.add_argument(
-        "-u", "--upper", type=int, required=True, help="Upper bound of the search range"
+        "-u",
+        "--upper",
+        type=int,
+        help="Upper bound of the search range (optional - will auto-discover if not provided)",
     )
     parser.add_argument(
         "-t",
@@ -119,8 +168,8 @@ Examples:
     if extra_args and extra_args[0] == "--":
         extra_args = extra_args[1:]
 
-    # Validate bounds
-    if args.lower >= args.upper:
+    # Validate bounds if upper is provided
+    if args.upper is not None and args.lower >= args.upper:
         print("Error: Lower bound must be less than upper bound")
         sys.exit(1)
 
@@ -130,8 +179,18 @@ Examples:
         sys.exit(1)
 
     try:
+        # If upper bound is not provided, find it automatically
+        if args.upper is None:
+            lower_bound, upper_bound = find_upper_bound(
+                args.lower, args.test, extra_args, args.verbose
+            )
+            print("-" * 50)
+        else:
+            lower_bound = args.lower
+            upper_bound = args.upper
+
         result = binary_search(
-            args.lower, args.upper, args.test, extra_args, args.verbose
+            lower_bound, upper_bound, args.test, extra_args, args.verbose
         )
 
         print("-" * 50)

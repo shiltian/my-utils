@@ -17,7 +17,7 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release                                      \
       -DLLVM_ENABLE_BINDINGS=OFF                                               \
       -DLLVM_ENABLE_OCAMLDOC=OFF                                               \
       -DLLVM_INCLUDE_DOCS=OFF                                                  \
-      -DLLVM_ENABLE_LLD=ON                                                     \
+      -DLLVM_USE_LINKER=mold                                                   \
       -DBUILD_SHARED_LIBS=ON                                                   \
       -B $BUILD_ROOT/llvm/release                                              \
       -S $HOME/Documents/vscode/llvm-project/llvm                              \
@@ -39,7 +39,7 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug                                        \
       -DLLVM_ENABLE_OCAMLDOC=OFF                                               \
       -DLLVM_INCLUDE_DOCS=OFF                                                  \
       -DLLVM_OPTIMIZED_TABLEGEN=ON                                             \
-      -DLLVM_ENABLE_LLD=ON                                                     \
+      -DLLVM_USE_LINKER=mold                                                   \
       -DBUILD_SHARED_LIBS=ON                                                   \
       -B $BUILD_ROOT/llvm/debug                                                \
       -S $HOME/Documents/vscode/llvm-project/llvm                              \
@@ -63,7 +63,7 @@ cmake -G Ninja                                                                 \
       -DLLVM_ENABLE_BINDINGS=OFF                                               \
       -DLLVM_ENABLE_OCAMLDOC=OFF                                               \
       -DLLVM_INCLUDE_DOCS=OFF                                                  \
-      -DLLVM_ENABLE_LLD=ON                                                     \
+      -DLLVM_USE_LINKER=mold                                                   \
       -B $BUILD_ROOT/lightning-llvm/release                                    \
       -S $HOME/Documents/vscode/internal/llvm-project/llvm                     \
       --install-prefix=$BUILD_ROOT/lightning-llvm/release
@@ -85,7 +85,7 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug                                        \
       -DLLVM_ENABLE_OCAMLDOC=OFF                                               \
       -DLLVM_INCLUDE_DOCS=OFF                                                  \
       -DLLVM_OPTIMIZED_TABLEGEN=ON                                             \
-      -DLLVM_ENABLE_LLD=ON                                                     \
+      -DLLVM_USE_LINKER=mold                                                   \
       -B $BUILD_ROOT/lightning-llvm/debug                                      \
       -S $HOME/Documents/vscode/internal/llvm-project/llvm                     \
       --install-prefix=$BUILD_ROOT/lightning-llvm/debug
