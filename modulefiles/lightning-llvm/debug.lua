@@ -3,7 +3,18 @@
 whatis("Name    : lightning-llvm")
 whatis("Version : debug")
 
-conflict("llvm", "lightning-llvm", "offload")
+-- Define all conflicting modules
+local conflicts = {"llvm", "lightning-llvm", "offload"}
+
+-- Automatically unload conflicting modules if they are loaded
+for _, mod in ipairs(conflicts) do
+    if isloaded(mod) then
+        unload(mod)
+    end
+end
+
+-- Declare conflicts
+conflict(table.unpack(conflicts))
 
 local build_root = os.getenv("BUILD_ROOT")
 local pkg_home = pathJoin(build_root, myModuleName(), myModuleVersion())
