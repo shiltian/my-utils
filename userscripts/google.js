@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Google Cleaner: Remove Sponsored & Redirects
-// @namespace    https://github.com/
+// @namespace    https://github.com/shiltian/my-utils/tree/main/userscripts
 // @version      2.0
 // @description  Removes sponsored (ad) links and Google's redirect tracking from search results
-// @author       Your Name
+// @author       Shilei Tian
 // @match        https://www.google.com/*
 // @match        https://www.google.co.uk/*
 // @match        https://www.google.ca/*
