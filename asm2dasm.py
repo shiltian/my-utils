@@ -13,16 +13,15 @@ from pathlib import Path
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Generate dasm test from asm test"
-    )
+    parser = argparse.ArgumentParser(description="Generate dasm test from asm test")
     parser.add_argument(
         "input",
         type=Path,
         help="Input asm test file",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=Path,
         required=True,
         help="Output dasm test file",
@@ -62,7 +61,9 @@ def parse_asm_blocks(content: str) -> list[dict]:
         if stripped.startswith("//") or stripped.startswith("#"):
             comment_content = stripped.lstrip("/#").strip()
             # Check if this is a RUN or NOTE line (header lines)
-            if comment_content.startswith("RUN:") or comment_content.startswith("NOTE:"):
+            if comment_content.startswith("RUN:") or comment_content.startswith(
+                "NOTE:"
+            ):
                 continue
 
             # Check if this is a check line (e.g., "// GFX1260: ...")
@@ -71,11 +72,13 @@ def parse_asm_blocks(content: str) -> list[dict]:
             if match and current_block:
                 prefix = match.group(1)
                 check_content = match.group(2)
-                current_block["check_lines"].append({
-                    "prefix": prefix,
-                    "content": check_content,
-                    "raw": stripped,
-                })
+                current_block["check_lines"].append(
+                    {
+                        "prefix": prefix,
+                        "content": check_content,
+                        "raw": stripped,
+                    }
+                )
             continue
 
         # This is an instruction line
@@ -120,15 +123,15 @@ def get_encoding_from_block(block: dict, check_prefix: str | None) -> str:
     for check_line in block["check_lines"]:
         encoding = extract_encoding(check_line["content"])
         if encoding:
-            check_lines_with_encoding.append({
-                "prefix": check_line["prefix"],
-                "encoding": encoding,
-            })
+            check_lines_with_encoding.append(
+                {
+                    "prefix": check_line["prefix"],
+                    "encoding": encoding,
+                }
+            )
 
     if not check_lines_with_encoding:
-        raise ValueError(
-            f"No encoding found for instruction: {block['instruction']}"
-        )
+        raise ValueError(f"No encoding found for instruction: {block['instruction']}")
 
     if check_prefix:
         # Filter by prefix
@@ -183,7 +186,9 @@ def read_preserved_lines(output_path: Path) -> list[str]:
         if stripped.startswith("#") or stripped.startswith("//"):
             comment_content = stripped.lstrip("/#").strip()
             # Check if it's a RUN or NOTE line
-            if comment_content.startswith("RUN:") or comment_content.startswith("NOTE:"):
+            if comment_content.startswith("RUN:") or comment_content.startswith(
+                "NOTE:"
+            ):
                 preserved.append(line)
                 continue
             # Otherwise it might be a check line or other content - stop preserving
@@ -246,4 +251,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

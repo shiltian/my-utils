@@ -9,6 +9,7 @@ prog = "opt-bisect-runner"
 
 logger = logging.getLogger(prog)
 
+
 def build(script, val):
     cmd = [script, f"{val}"]
 
@@ -17,10 +18,13 @@ def build(script, val):
 
     subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+
 def test(script, repeat):
     for t in range(0, repeat):
         logger.info(f"testing...[{t + 1}/{repeat}]")
-        r = subprocess.call([script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        r = subprocess.call(
+            [script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
         if r != 0:
             return False
     return True
@@ -46,7 +50,9 @@ def main():
     )
     parser.add_argument("-l", "--lower", type=int, default=1, help="lower bound")
     parser.add_argument("-u", "--upper", type=int, help="upper bound")
-    parser.add_argument("-r", "--repeat", type=int, default=1, help="times to run the test script")
+    parser.add_argument(
+        "-r", "--repeat", type=int, default=1, help="times to run the test script"
+    )
     parser.add_argument(
         "-v",
         "--verbose",
@@ -80,7 +86,6 @@ def main():
             logger.info(f"current hi={hi} succeeds")
             lo = hi
             hi = hi * 2
-
 
     while lo < hi:
         cur = (lo + hi) // 2
