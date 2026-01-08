@@ -8,8 +8,10 @@ using the appropriate update script (e.g., update_llc_test_checks.py).
 
 import argparse
 import logging
+import os
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -49,6 +51,93 @@ DEFAULT_TEST_DIR = "llvm/test"
 logger = logging.getLogger(PROG_NAME)
 
 
+class ProgressBar:
+    """A simple progress bar using only standard library."""
+
+    def __init__(self, total: int, desc: str = "Progress", width: int = 40):
+        """
+        Initialize the progress bar.
+
+        Args:
+            total: Total number of items to process
+            desc: Description to show before the progress bar
+            width: Width of the progress bar in characters
+        """
+        self.total = total
+        self.current = 0
+        self.desc = desc
+        self.width = width
+        self.start_time = time.time()
+        self.success = 0
+        self.failure = 0
+        self.enabled = sys.stderr.isatty()
+
+    def update(self, success: bool = True) -> None:
+        """
+        Update the progress bar.
+
+        Args:
+            success: Whether the current item succeeded
+        """
+        self.current += 1
+        if success:
+            self.success += 1
+        else:
+            self.failure += 1
+
+        if self.enabled:
+            self._render()
+
+    def _render(self) -> None:
+        """Render the progress bar to stderr."""
+        if self.total == 0:
+            return
+
+        # Calculate progress
+        progress = self.current / self.total
+        filled = int(self.width * progress)
+        bar = "=" * filled + "-" * (self.width - filled)
+
+        # Calculate time
+        elapsed = time.time() - self.start_time
+        if self.current > 0:
+            eta = elapsed / self.current * (self.total - self.current)
+            eta_str = self._format_time(eta)
+        else:
+            eta_str = "??"
+
+        elapsed_str = self._format_time(elapsed)
+
+        # Build the progress line
+        percent = int(progress * 100)
+        status = f"✓ {self.success} ✗ {self.failure}"
+        line = (
+            f"\r{self.desc}: [{bar}] {self.current}/{self.total} "
+            f"({percent}%) {elapsed_str}<{eta_str} {status}"
+        )
+
+        # Write to stderr
+        sys.stderr.write(line)
+        sys.stderr.flush()
+
+        # Add newline on completion
+        if self.current == self.total:
+            sys.stderr.write("\n")
+            sys.stderr.flush()
+
+    def _format_time(self, seconds: float) -> str:
+        """Format seconds into MM:SS."""
+        mins = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{mins:02d}:{secs:02d}"
+
+    def close(self) -> None:
+        """Close the progress bar, ensuring a newline is written."""
+        if self.enabled and self.current < self.total:
+            sys.stderr.write("\n")
+            sys.stderr.flush()
+
+
 @dataclass
 class Config:
     """Configuration for the test updater."""
@@ -56,6 +145,7 @@ class Config:
     llvm_src_root: Path
     test_file: Path
     verbose: bool
+    show_progress: bool
 
 
 class TestUpdateError(Exception):
@@ -305,6 +395,10 @@ Supported test suite prefixes:
   (and other LLVM subprojects)
 
 The tool automatically maps lit test prefixes to their respective test directories.
+
+Progress bar:
+  A progress bar is shown by default when running in an interactive terminal.
+  Use --no-progress to disable it (useful in CI or when redirecting output).
         """,
     )
 
@@ -329,15 +423,24 @@ The tool automatically maps lit test prefixes to their respective test directori
         action="store_true",
         help="Enable verbose output",
     )
+    parser.add_argument(
+        "--no-progress",
+        action="store_true",
+        help="Disable progress bar (useful for CI or when redirecting output)",
+    )
 
     args = parser.parse_args()
     setup_logging(args.verbose)
+
+    # Determine if we should show progress bar
+    show_progress = not args.no_progress and sys.stderr.isatty()
 
     try:
         config = Config(
             llvm_src_root=args.llvm_src_root.resolve(),
             test_file=args.test_file.resolve(),
             verbose=args.verbose,
+            show_progress=show_progress,
         )
     except (ValueError, OSError) as e:
         logger.error(f"Invalid path provided: {e}")
@@ -366,12 +469,25 @@ The tool automatically maps lit test prefixes to their respective test directori
     success_count = 0
     failure_count = 0
 
+    # Create progress bar if enabled
+    progress_bar = None
+    if config.show_progress:
+        progress_bar = ProgressBar(len(test_list), desc="Updating tests", width=40)
+
     for test_path_str, suite_prefix in test_list:
         test_path = resolve_test_path(test_path_str, config.llvm_src_root, suite_prefix)
-        if process_test_file(test_path, config):
+        success = process_test_file(test_path, config)
+
+        if success:
             success_count += 1
         else:
             failure_count += 1
+
+        if progress_bar:
+            progress_bar.update(success=success)
+
+    if progress_bar:
+        progress_bar.close()
 
     logger.info(
         f"Completed: {success_count} succeeded, {failure_count} failed/skipped."
