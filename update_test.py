@@ -11,7 +11,9 @@ import logging
 import os
 import subprocess
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -52,7 +54,7 @@ logger = logging.getLogger(PROG_NAME)
 
 
 class ProgressBar:
-    """A simple progress bar using only standard library."""
+    """A simple thread-safe progress bar using only standard library."""
 
     def __init__(self, total: int, desc: str = "Progress", width: int = 40):
         """
@@ -71,22 +73,24 @@ class ProgressBar:
         self.success = 0
         self.failure = 0
         self.enabled = sys.stderr.isatty()
+        self._lock = threading.Lock()
 
     def update(self, success: bool = True) -> None:
         """
-        Update the progress bar.
+        Update the progress bar. Thread-safe.
 
         Args:
             success: Whether the current item succeeded
         """
-        self.current += 1
-        if success:
-            self.success += 1
-        else:
-            self.failure += 1
+        with self._lock:
+            self.current += 1
+            if success:
+                self.success += 1
+            else:
+                self.failure += 1
 
-        if self.enabled:
-            self._render()
+            if self.enabled:
+                self._render()
 
     def _render(self) -> None:
         """Render the progress bar to stderr."""
@@ -132,10 +136,11 @@ class ProgressBar:
         return f"{mins:02d}:{secs:02d}"
 
     def close(self) -> None:
-        """Close the progress bar, ensuring a newline is written."""
-        if self.enabled and self.current < self.total:
-            sys.stderr.write("\n")
-            sys.stderr.flush()
+        """Close the progress bar, ensuring a newline is written. Thread-safe."""
+        with self._lock:
+            if self.enabled and self.current < self.total:
+                sys.stderr.write("\n")
+                sys.stderr.flush()
 
 
 @dataclass
@@ -146,6 +151,7 @@ class Config:
     test_file: Path
     verbose: bool
     show_progress: bool
+    jobs: int
 
 
 class TestUpdateError(Exception):
@@ -364,6 +370,47 @@ def load_test_list(test_file: Path) -> list[tuple[str, Optional[str]]]:
     return test_paths
 
 
+def deduplicate_test_list(
+    test_list: list[tuple[str, Optional[str]]], llvm_root: Path
+) -> list[Path]:
+    """
+    Deduplicate test paths by resolving them to absolute paths.
+
+    This prevents race conditions when the same file appears multiple times
+    in the test list (e.g., as both 'LLVM :: CodeGen/test.ll' and 'CodeGen/test.ll').
+
+    Args:
+        test_list: List of (test_path_str, suite_prefix) tuples
+        llvm_root: LLVM source root directory
+
+    Returns:
+        List of unique resolved absolute Paths
+    """
+    seen: dict[Path, str] = {}  # Maps resolved path to original string for logging
+    unique_paths: list[Path] = []
+    duplicate_count = 0
+
+    for test_path_str, suite_prefix in test_list:
+        resolved = resolve_test_path(test_path_str, llvm_root, suite_prefix)
+
+        if resolved in seen:
+            duplicate_count += 1
+            logger.debug(
+                f"Duplicate test path: '{test_path_str}' resolves to same file as "
+                f"'{seen[resolved]}' ({resolved})"
+            )
+        else:
+            seen[resolved] = test_path_str
+            unique_paths.append(resolved)
+
+    if duplicate_count > 0:
+        logger.warning(
+            f"Removed {duplicate_count} duplicate test path(s) from the list."
+        )
+
+    return unique_paths
+
+
 def main() -> int:
     """
     Main entry point for the test updater tool.
@@ -428,6 +475,13 @@ Progress bar:
         action="store_true",
         help="Disable progress bar (useful for CI or when redirecting output)",
     )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        default=os.cpu_count() or 4,
+        help="Number of parallel workers (default: CPU count)",
+    )
 
     args = parser.parse_args()
     setup_logging(args.verbose)
@@ -441,6 +495,7 @@ Progress bar:
             test_file=args.test_file.resolve(),
             verbose=args.verbose,
             show_progress=show_progress,
+            jobs=args.jobs,
         )
     except (ValueError, OSError) as e:
         logger.error(f"Invalid path provided: {e}")
@@ -464,7 +519,16 @@ Progress bar:
         logger.warning("Test list file is empty.")
         return 0
 
-    logger.info(f"Processing {len(test_list)} test(s)...")
+    # Deduplicate test paths to avoid race conditions
+    test_paths = deduplicate_test_list(test_list, config.llvm_src_root)
+
+    if not test_paths:
+        logger.warning("No unique test paths to process after deduplication.")
+        return 0
+
+    logger.info(
+        f"Processing {len(test_paths)} unique test(s) with {config.jobs} worker(s)..."
+    )
 
     success_count = 0
     failure_count = 0
@@ -472,19 +536,30 @@ Progress bar:
     # Create progress bar if enabled
     progress_bar = None
     if config.show_progress:
-        progress_bar = ProgressBar(len(test_list), desc="Updating tests", width=40)
+        progress_bar = ProgressBar(len(test_paths), desc="Updating tests", width=40)
 
-    for test_path_str, suite_prefix in test_list:
-        test_path = resolve_test_path(test_path_str, config.llvm_src_root, suite_prefix)
-        success = process_test_file(test_path, config)
+    # Process tests in parallel
+    with ThreadPoolExecutor(max_workers=config.jobs) as executor:
+        futures = {
+            executor.submit(process_test_file, test_path, config): test_path
+            for test_path in test_paths
+        }
 
-        if success:
-            success_count += 1
-        else:
-            failure_count += 1
+        for future in as_completed(futures):
+            try:
+                success = future.result()
+            except Exception as e:
+                test_path = futures[future]
+                logger.error(f"Unexpected error processing {test_path}: {e}")
+                success = False
 
-        if progress_bar:
-            progress_bar.update(success=success)
+            if success:
+                success_count += 1
+            else:
+                failure_count += 1
+
+            if progress_bar:
+                progress_bar.update(success=success)
 
     if progress_bar:
         progress_bar.close()
