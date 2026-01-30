@@ -90,6 +90,51 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug                                        \
       -S $HOME/Documents/vscode/internal/llvm-project/llvm                     \
       --install-prefix=$BUILD_ROOT/lightning-llvm/debug
 
+# rocm-llvm
+
+cmake -G Ninja                                                                 \
+      -DCMAKE_BUILD_TYPE=Release                                               \
+      -DCMAKE_C_COMPILER_LAUNCHER=ccache                                       \
+      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache                                     \
+      -DCMAKE_C_COMPILER=/home/linuxbrew/.linuxbrew/bin/clang                  \
+      -DCMAKE_CXX_COMPILER=/home/linuxbrew/.linuxbrew/bin/clang++              \
+      -DLLVM_TARGETS_TO_BUILD="host;AMDGPU"                                    \
+      -DLLVM_ENABLE_PROJECTS="clang;lld;cross-project-tests"                   \
+      -DLLVM_ENABLE_RUNTIMES="compiler-rt"                                     \
+      -DLLVM_INSTALL_UTILS=ON                                                  \
+      -DLLVM_INCLUDE_BENCHMARKS=OFF                                            \
+      -DLLVM_INCLUDE_EXAMPLES=OFF                                              \
+      -DLLVM_ENABLE_ASSERTIONS=ON                                              \
+      -DLLVM_ENABLE_BINDINGS=OFF                                               \
+      -DLLVM_ENABLE_OCAMLDOC=OFF                                               \
+      -DLLVM_INCLUDE_DOCS=OFF                                                  \
+      -DLLVM_USE_LINKER=mold                                                   \
+      -B $BUILD_ROOT/rocm-llvm/release                                         \
+      -S $HOME/Documents/vscode/rocm/llvm-project/llvm                         \
+      --install-prefix=$BUILD_ROOT/rocm-llvm/release
+
+
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug                                        \
+      -DCMAKE_C_COMPILER_LAUNCHER=ccache                                       \
+      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache                                     \
+      -DCMAKE_C_COMPILER=/home/linuxbrew/.linuxbrew/bin/clang                  \
+      -DCMAKE_CXX_COMPILER=/home/linuxbrew/.linuxbrew/bin/clang++              \
+      -DLLVM_TARGETS_TO_BUILD="host;AMDGPU"                                    \
+      -DLLVM_ENABLE_PROJECTS="clang;lld;cross-project-tests"                   \
+      -DLLVM_ENABLE_RUNTIMES="compiler-rt"                                     \
+      -DLLVM_INSTALL_UTILS=ON                                                  \
+      -DLLVM_INCLUDE_BENCHMARKS=OFF                                            \
+      -DLLVM_INCLUDE_EXAMPLES=OFF                                              \
+      -DLLVM_ENABLE_ASSERTIONS=ON                                              \
+      -DLLVM_ENABLE_BINDINGS=OFF                                               \
+      -DLLVM_ENABLE_OCAMLDOC=OFF                                               \
+      -DLLVM_INCLUDE_DOCS=OFF                                                  \
+      -DLLVM_OPTIMIZED_TABLEGEN=ON                                             \
+      -DLLVM_USE_LINKER=mold                                                   \
+      -B $BUILD_ROOT/rocm-llvm/debug                                           \
+      -S $HOME/Documents/vscode/rocm/llvm-project/llvm                         \
+      --install-prefix=$BUILD_ROOT/rocm-llvm/debug
+
 # device-libs
 
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Release                                      \
