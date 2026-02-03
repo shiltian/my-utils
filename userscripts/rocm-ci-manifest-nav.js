@@ -421,24 +421,6 @@
 '        .diff-panel::-webkit-scrollbar-track { background: #1e1e2e; }\n' +
 '        .diff-panel::-webkit-scrollbar-thumb { background: #45475a; border-radius: 5px; }\n' +
 '        .diff-panel::-webkit-scrollbar-thumb:hover { background: #585b70; }\n' +
-'        .nav-hint {\n' +
-'            position: fixed;\n' +
-'            bottom: 20px;\n' +
-'            left: 50%;\n' +
-'            transform: translateX(-50%);\n' +
-'            background: #313244;\n' +
-'            padding: 8px 16px;\n' +
-'            border-radius: 8px;\n' +
-'            font-size: 12px;\n' +
-'            color: #a6adc8;\n' +
-'            border: 1px solid #45475a;\n' +
-'        }\n' +
-'        .nav-hint kbd {\n' +
-'            background: #45475a;\n' +
-'            padding: 2px 6px;\n' +
-'            border-radius: 4px;\n' +
-'            margin: 0 2px;\n' +
-'        }\n' +
 '    </style>\n' +
 '</head>\n' +
 '<body>\n' +
@@ -457,9 +439,6 @@
 '            <div class="panel-header">\uD83D\uDCC4 Build ' + build2 + ' (' + lines2.length + ' lines)</div>\n' +
 '            ' + rightHtml + '\n' +
 '        </div>\n' +
-'    </div>\n' +
-'    <div class="nav-hint">\n' +
-'        <kbd>\u2191</kbd><kbd>\u2193</kbd> Scroll &nbsp;|&nbsp; Panels scroll in sync\n' +
 '    </div>\n' +
 '    <script>\n' +
 '        var leftPanel = document.getElementById("left-panel");\n' +
@@ -539,32 +518,4 @@
         }
     }
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-        // Ignore if modal is open or typing in input
-        if (compareModal.style.display === 'block') return;
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-        // Left arrow or 'p' for previous
-        if (e.key === 'ArrowLeft' || e.key === 'p' || e.key === 'P') {
-            if (buildNumber > 1) {
-                window.location.href = `${baseUrl}${buildNumber - 1}${suffix}`;
-            }
-        }
-        // Right arrow or 'n' for next
-        if (e.key === 'ArrowRight' || e.key === 'n' || e.key === 'N') {
-            window.location.href = `${baseUrl}${buildNumber + 1}${suffix}`;
-        }
-        // 'b' or Backspace for go back to build page
-        if (e.key === 'b' || e.key === 'B' || e.key === 'Backspace') {
-            e.preventDefault();
-            window.location.href = buildPageUrl;
-        }
-        // 'c' for compare
-        if (e.key === 'c' || e.key === 'C') {
-            compareModal.style.display = 'block';
-            compareInput.focus();
-            compareInput.select();
-        }
-    });
 })();
