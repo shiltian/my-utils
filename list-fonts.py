@@ -8,6 +8,7 @@ from pathlib import Path
 from fontTools.ttLib import TTFont
 
 FONT_EXTENSIONS = {".ttf", ".otf", ".ttc", ".otc"}
+NERD_FONT_VARIANT_SUFFIXES = (" Nerd Font Mono", " Nerd Font Propo")
 
 
 def is_fixed_width(font):
@@ -47,6 +48,14 @@ def get_family_name(font):
         if rec:
             return str(rec)
     return None
+
+
+def normalize_family_name(family):
+    """Collapse Nerd Font Mono/Propo variants into the base family name."""
+    for suffix in NERD_FONT_VARIANT_SUFFIXES:
+        if family.endswith(suffix):
+            return family[: -len(suffix)] + " Nerd Font"
+    return family
 
 
 def scan_fonts(directory, fixed_width_only=False, recursive=True):
@@ -97,15 +106,26 @@ def main():
         action="store_true",
         help="Show the file path for each font",
     )
+    parser.add_argument(
+        "--normalize-nerd-variants",
+        action="store_true",
+        help="Merge 'Nerd Font Mono/Propo' families into the base 'Nerd Font' name",
+    )
     args = parser.parse_args()
 
     seen_families = {}
     for family, mono, path in scan_fonts(
         args.directory, args.fixed_width, args.recursive
     ):
-        if family not in seen_families:
-            seen_families[family] = (mono, [])
-        seen_families[family][1].append(path)
+        normalized_family = (
+            normalize_family_name(family) if args.normalize_nerd_variants else family
+        )
+        if normalized_family not in seen_families:
+            seen_families[normalized_family] = {"mono": False, "paths": []}
+        seen_families[normalized_family]["mono"] = (
+            seen_families[normalized_family]["mono"] or mono
+        )
+        seen_families[normalized_family]["paths"].append(path)
 
     if not seen_families:
         label = "fixed-width fonts" if args.fixed_width else "fonts"
@@ -114,7 +134,8 @@ def main():
 
     tag_width = 6
     for family in sorted(seen_families):
-        mono, paths = seen_families[family]
+        mono = seen_families[family]["mono"]
+        paths = seen_families[family]["paths"]
         tag = "[mono]" if mono else ""
         line = f"  {tag:<{tag_width}}  {family}"
         if args.show_paths:
@@ -124,7 +145,7 @@ def main():
         print(line)
 
     total = len(seen_families)
-    mono_count = sum(1 for m, _ in seen_families.values() if m)
+    mono_count = sum(1 for family in seen_families.values() if family["mono"])
     print(f"\n{total} families ({mono_count} monospace)")
 
 

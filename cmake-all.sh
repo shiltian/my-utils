@@ -109,6 +109,7 @@ cmake -G Ninja                                                                 \
       -DLLVM_ENABLE_OCAMLDOC=OFF                                               \
       -DLLVM_INCLUDE_DOCS=OFF                                                  \
       -DLLVM_USE_LINKER=mold                                                   \
+      -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON                                    \
       -B $BUILD_ROOT/rocm-llvm/release                                         \
       -S $HOME/Documents/vscode/rocm/llvm-project/llvm                         \
       --install-prefix=$BUILD_ROOT/rocm-llvm/release
@@ -131,6 +132,7 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug                                        \
       -DLLVM_INCLUDE_DOCS=OFF                                                  \
       -DLLVM_OPTIMIZED_TABLEGEN=ON                                             \
       -DLLVM_USE_LINKER=mold                                                   \
+      -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON                                    \
       -B $BUILD_ROOT/rocm-llvm/debug                                           \
       -S $HOME/Documents/vscode/rocm/llvm-project/llvm                         \
       --install-prefix=$BUILD_ROOT/rocm-llvm/debug
