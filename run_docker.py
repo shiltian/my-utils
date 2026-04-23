@@ -56,7 +56,7 @@ def main():
         args.image,
         "bash",
         "-c",
-        "apt-get update && apt-get install -y zsh vim cmake ninja-build && exec zsh",
+        "apt-get update && apt-get install -y zsh vim cmake ninja-build ccache ripgrep && exec zsh",
     ]
 
     # Execute docker
