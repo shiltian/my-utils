@@ -22,6 +22,7 @@ PROG_NAME = "update-test"
 
 # Mapping of test updater scripts to their test types
 TEST_UPDATERS = {
+    "update_cc_test_checks.py": "cc",
     "update_llc_test_checks.py": "llc",
     "update_mir_test_checks.py": "mir",
     "update_test_checks.py": "opt",
@@ -148,6 +149,7 @@ class Config:
     """Configuration for the test updater."""
 
     llvm_src_root: Path
+    llvm_bin_dir: Optional[Path]
     test_file: Path
     verbose: bool
     show_progress: bool
@@ -171,13 +173,18 @@ def setup_logging(verbose: bool) -> None:
 
 
 def run_update(
-    llvm_root: Path, updater_script: str, test_path: Path, verbose: bool
+    llvm_root: Path,
+    llvm_bin_dir: Optional[Path],
+    updater_script: str,
+    test_path: Path,
+    verbose: bool,
 ) -> None:
     """
     Run the test updater script on a test file.
 
     Args:
         llvm_root: Path to LLVM source root directory
+        llvm_bin_dir: Optional path to LLVM build bin directory
         updater_script: Name of the updater script to run
         test_path: Path to the test file to update
         verbose: Whether to show updater output
@@ -192,12 +199,22 @@ def run_update(
 
     stdout = None if verbose else subprocess.DEVNULL
     stderr = None if verbose else subprocess.DEVNULL
+    env = None
+    if llvm_bin_dir is not None:
+        env = os.environ.copy()
+        current_path = env.get("PATH", "")
+        env["PATH"] = (
+            f"{llvm_bin_dir}{os.pathsep}{current_path}"
+            if current_path
+            else str(llvm_bin_dir)
+        )
 
     try:
         subprocess.run(
             [str(updater_path), str(test_path)],
             stdout=stdout,
             stderr=stderr,
+            env=env,
             check=True,
         )
     except subprocess.CalledProcessError as e:
@@ -295,7 +312,13 @@ def process_test_file(test_path: Path, config: Config) -> bool:
     logger.debug(f"Test {test_path} is a {test_kind} test. Updating...")
 
     try:
-        run_update(config.llvm_src_root, updater_script, test_path, config.verbose)
+        run_update(
+            config.llvm_src_root,
+            config.llvm_bin_dir,
+            updater_script,
+            test_path,
+            config.verbose,
+        )
         logger.debug(f"Test {test_path} updated successfully.")
         return True
     except TestUpdateError as e:
@@ -424,6 +447,7 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Supported test updaters:
+  - update_cc_test_checks.py (C/C++ tests)
   - update_llc_test_checks.py (llc tests)
   - update_mir_test_checks.py (mir tests)
   - update_test_checks.py (opt tests)
@@ -455,6 +479,12 @@ Progress bar:
         required=True,
         type=Path,
         help="LLVM source code root directory",
+    )
+    parser.add_argument(
+        "-b",
+        "--llvm-bin-dir",
+        type=Path,
+        help="LLVM build bin directory to prepend to PATH when running updater scripts",
     )
     parser.add_argument(
         "-f",
@@ -492,6 +522,7 @@ Progress bar:
     try:
         config = Config(
             llvm_src_root=args.llvm_src_root.resolve(),
+            llvm_bin_dir=args.llvm_bin_dir.resolve() if args.llvm_bin_dir else None,
             test_file=args.test_file.resolve(),
             verbose=args.verbose,
             show_progress=show_progress,
@@ -503,6 +534,10 @@ Progress bar:
 
     if not config.llvm_src_root.exists():
         logger.error(f"LLVM source root does not exist: {config.llvm_src_root}")
+        return 1
+
+    if config.llvm_bin_dir is not None and not config.llvm_bin_dir.is_dir():
+        logger.error(f"LLVM bin directory does not exist: {config.llvm_bin_dir}")
         return 1
 
     if not config.test_file.exists():
